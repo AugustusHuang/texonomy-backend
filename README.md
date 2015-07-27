@@ -1,2 +1,2 @@
 # texonomy-backend
-Backend of texonomy, an online tex symbol recognition project.
+Backend of texonomy, an online TeX/LaTeX symbol recognition project.

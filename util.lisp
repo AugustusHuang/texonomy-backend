@@ -286,7 +286,7 @@
     ;; Return the inverted matrix and its determinant.
     (values out det)))
 
-(defun negative-sparse-vector (svec)
+(defun negate-sparse-vector (svec)
   "Negating function of a sparse vector."
   (declare (type sparse-vector svec))
   (let* ((values (sparse-vector-values svec))
@@ -346,7 +346,7 @@
 (defun sparse-vector---2 (svec1 svec2)
   "Helper function of general sparse vector subtraction."
   (declare (type sparse-vector svec1 svec2))
-  (sparse-vector-+-2 svec1 (negative-sparse-vector svec2)))
+  (sparse-vector-+-2 svec1 (negate-sparse-vector svec2)))
 
 (defun sparse-vector-+ (svec &rest more)
   "Addition function of sparse vectors, from left to right."

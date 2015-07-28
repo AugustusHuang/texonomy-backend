@@ -4,7 +4,28 @@
 (defpackage :texonomy-util
   (:nicknames :tex-util)
   (:use :cl)
-  (:export))
+  ;; We have to export accessors, constructor, type predicate and the name of
+  ;; the structure to export them as a whole...
+  (:export :sparse-vector
+	   :sparse-vector-p
+	   :make-sparse-vector
+	   :sparse-vector-values
+	   :sparse-vector-index
+	   :sparse-vector-len
+	   :make-sparse-vector-from-vector
+	   :make-vector-from-sparse-vector
+	   :aref-sparse-vector
+	   :random-array
+	   :random-matrix
+	   :with-gensyms
+	   :doseq
+	   :dovec
+	   :matrix-invert
+	   :negate-sparse-vector
+	   :sparse-vector-+
+	   :sparse-vector--
+	   :matrix-*-sparse-vector
+	   :sparse-inner-product))
 
 ;;; Compressed sensing package, will contain everything about the underlying
 ;;; core tech CS.

@@ -28,6 +28,21 @@
        collect (length list)
        do (setf list (car list))))
 
+(defun 1d-array-member (item vec &key (test #'=))
+  "Vector version of MEMBER function."
+  (member item (1d-array-to-list vec) :test test))
+
+(defun remove-by-position (index list)
+  "REMOVE function by index."
+  (loop for i in list
+     for j from 1 unless (= j (1+ index)) collect i))
+
+(defun insert (list index value)
+  "Insert VALUE before the INDEXth element in the list."
+  (let ((dis (1- index)))
+    (push value (cdr (nthcdr dis list)))
+    list))
+
 ;;; Only sparse vector is needed.
 ;;; Simply switch between sparse vector and normal vector.
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -55,47 +70,89 @@
 (defun make-vector-from-sparse-vector (svec)
   "Make a general vector from a sparse vector."
   (declare (type sparse-vector svec))
-  )
+  (let* ((len (sparse-vector-len svec))
+	 (out (make-array len :initial-element 0))
+	 (index (sparse-vector-index svec)))
+    (loop for i from 0 to (1- len) do
+	 (if (1d-array-member i index)
+	     (setf (aref out i) (aref-sparse-vector svec i))))
+    out))
 
 (defun aref-sparse-vector (svec index)
   "AREF function of a sparse vector."
   (declare (type sparse-vector svec)
 	   (type fixnum index))
-  (loop for i from 0 to (1- (length (sparse-vector-index svec))) do
-       (if (= index (aref (sparse-vector-index svec) i))
-	   (return-from aref-sparse-vector (aref (sparse-vector-values svec) i))))
-  0)
+  (let ((index-array (sparse-vector-index svec))
+	(values (sparse-vector-values svec))
+	(len (sparse-vector-len svec)))
+    (assert (< index len)
+	    (svec index)
+	    "Index ~D out of bounds of sparse vector ~A."
+	    index
+	    svec)
+    (loop for i from 0 to (1- (length index-array)) do
+	 (if (= index (aref index-array i))
+	     (return-from aref-sparse-vector (aref values i))))
+    0))
 
-;;; TEST FAILED.
 (defun (setf aref-sparse-vector) (value svec index)
   "(SETF AREF) function of a sparse vector."
   (declare (type sparse-vector svec)
 	   (type fixnum index))
-  (loop for i from 0 to (1- (length (sparse-vector-index svec))) do
-       (let ((ind (aref (sparse-vector-index svec) i)))
-	 (if (<= index ind)
-	     ;; Just substitute it...
-	     (if (= index ind)
-		 (progn
-		   (setf (aref (sparse-vector-values svec) index) value)
-		   (return-from aref-sparse-vector))
-		 ;; The first time we meet a index greater than our goal.
-		 (let ((helper1 ())
-		       (helper2 ())
-		       (values-list (1d-array-to-list (sparse-vector-values svec)))
-		       (index-list (1d-array-to-list (sparse-vector-index svec))))
-		   (loop for j from 0 to (- i 2) do
-			(push (pop values-list) helper1)
-			(push (pop index-list) helper2))
-
-		   (push value helper1)
-		   (push index helper2)
-
-		   (loop for j from 0 to (1- i) do
-			(push (pop helper1) values-list)
-			(push (pop helper2) index-list))
-		   (setf (sparse-vector-values svec) (list-to-array values-list 1)
-			 (sparse-vector-index svec) (list-to-array index-list 1))))))))
+  (let ((index-array (sparse-vector-index svec))
+	(values (sparse-vector-values svec))
+	(len (sparse-vector-len svec))
+	(helper-list1 ())
+	(helper-list2 ()))
+    (assert (< index len)
+	    (value svec index)
+	    "Index ~D out of bounds of sparse vector ~A."
+	    index
+	    svec)
+    (loop for i from 0 to (1- (length index-array)) do
+	 (let ((ind (aref index-array i)))
+	   ;; There are chances that the last index is smaller than the index
+	   ;; of where we wanna change the value...
+	   (if (<= index ind)
+	       ;; If we meet a slot with non-zero value, substitute it or die.
+	       (if (= index ind)
+		   (if (/= value 0)
+		       (progn
+			 (setf (aref values index) value)
+			 (return-from aref-sparse-vector value))
+		       ;; Remove this slot from values and index.
+		       (progn
+			 (setf helper-list1
+			       (remove-by-position ind (1d-array-to-list values))
+			       helper-list2
+			       (remove-by-position ind (1d-array-to-list index-array))
+			       (sparse-vector-values svec)
+			       (list-to-array helper-list1 1)
+			       (sparse-vector-index svec)
+			       (list-to-array helper-list2 1))
+			 (return-from aref-sparse-vector value)))
+		   ;; The first time we meet a index greater than our goal.
+		   (if (/= value 0)
+		       ;; Add a new index and form a new values array.
+		       (progn
+			 (setf helper-list1
+			       (insert (1d-array-to-list values) i value)
+			       helper-list2
+			       (insert (1d-array-to-list index-array) i index)
+			       (sparse-vector-values svec)
+			       (list-to-array helper-list1 1)
+			       (sparse-vector-index svec)
+			       (list-to-array helper-list2 1))
+			 (return-from aref-sparse-vector value))
+		       ;; Since this is the first time index >= our place,
+		       ;; So there's no chance to change anything, we are done.
+		       (return-from aref-sparse-vector value))))))
+    ;; The biggest index is smaller than ours, append it and the value.
+    (setf helper-list1 (append (1d-array-to-list values) (list value))
+	  helper-list2 (append (1d-array-to-list index-array) (list index))
+	  (sparse-vector-values svec) (list-to-array helper-list1 1)
+	  (sparse-vector-index svec) (list-to-array helper-list2 1))
+    value))
 
 (defun random-array (length start end)
   "Get an array of length LENGTH, numbers in array ranging from START to END."
@@ -118,6 +175,17 @@
 	 (loop for j from 0 to (1- col) do
 	      (setf (aref out i j) (+ (the fixnum (random rand)) start))))
     out))
+
+;;; FIXME: This function only works when we are handling sparse vector,
+;;; make it more general.
+(defun ignore-trailing-zero (array)
+  "Remove an array's trailing 0s, assuming 0 will only appear on the tail."
+  (declare (type vector array))
+  (let ((len 0))
+    (dovec (item array)
+      (if (/= item 0)
+	  (incf len)
+	  (return-from ignore-trailing-zero (adjust-array array len))))))
 
 (defmacro with-gensyms ((&rest names) &body body)
   "Expand into code that binds all names to symbols generated by GENSYM."
@@ -218,14 +286,22 @@
     ;; Return the inverted matrix and its determinant.
     (values out det)))
 
-;;; FIXME: Make it non-destructive...
 (defun negative-sparse-vector (svec)
   "Negating function of a sparse vector."
   (declare (type sparse-vector svec))
-  (loop for i from 0 to (1- (length (sparse-vector-values svec))) do
-       (setf (aref (sparse-vector-values svec) i) (- (aref (sparse-vector-values svec) i)))))
+  (let* ((values (sparse-vector-values svec))
+	 (index (sparse-vector-index svec))
+	 (out (make-sparse-vector :values (make-array (length values) :initial-element 0)
+				  :index (make-array (length index) :initial-element 0)
+				  :len (sparse-vector-len svec)))
+	 (out-values (sparse-vector-values out))
+	 (out-index (sparse-vector-index out)))
+    (loop for i from 0 to (1- (length values)) do
+	 (setf (aref out-values i) (- (aref values i))
+	       (aref out-index i) (aref index i)))
+    out))
 
-;;; COMPILE FAILED.
+;;; SOME CODE UNREACHABLE.
 (defun sparse-vector-+-2 (svec1 svec2)
   "Helper function of general sparse vector addition."
   (declare (type sparse-vector svec1 svec2))
@@ -238,7 +314,7 @@
   (let ((len (sparse-vector-len svec1))
 	(ilen (length (sparse-vector-index svec2)))
 	(value-index (mapcar #'list
-			     (1d-array-to-list (sparse-vector-values svec1))
+			     (1d-array-to-list (sparse-vector-values svec2))
 			     (1d-array-to-list (sparse-vector-index svec2)))))
     (flet ((list-second (lst) (mapcar #'second lst))
 	   (second-< (lst1 lst2)
@@ -283,7 +359,6 @@
   (declare (type sparse-vector svec))
   (reduce #'sparse-v---2 (cons svec more)))
 
-;;; TEST FAILED.
 (defun matrix-*-sparse-vector (mat svec)
   "Multiplication routine of a general matrix and a sparse vector."
   (declare (type matrix mat)
@@ -294,13 +369,15 @@
 	  "Size mismatch, matrix with ~D columns and vector of length ~D."
 	  (array-dimension mat 1)
 	  (sparse-vector-len svec))
-  (let* ((slen (sparse-vector-len svec))
-	 (mlen (array-dimension mat 0))
-	 (out (make-array mlen :initial-element 0)))
-    (loop for i from 0 to (1- mlen) do
-	 (loop for j from 0 to (1- slen) do
-	      (incf (aref out i) (* (aref mat i (aref (sparse-vector-index svec) j))
-				    (aref (sparse-vector-values svec) j)))))
+  (let* ((row (array-dimension mat 0))
+	 (out (make-array row :initial-element 0))
+	 (index (sparse-vector-index svec))
+	 (values (sparse-vector-values svec))
+	 (ilen (length index)))
+    (loop for i from 0 to (1- row) do
+	 (loop for j from 0 to (1- ilen) do
+	      (incf (aref out i) (* (aref mat i (aref index j))
+				    (aref values j)))))
     out))
 
 ;;; Untested.

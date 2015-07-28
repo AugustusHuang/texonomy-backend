@@ -10,6 +10,93 @@
   "Square matrix type."
   `(array ,type (,dim ,dim)))
 
+;;; TODO: How if the list can't form an array?
+;;; Shall we append zeros or do something?
+(defun list-to-array (list depth)
+  "Make an array from a given list."
+  (make-array (list-dimensions list depth) :initial-contents list))
+
+(defun 1d-array-to-list (array)
+  "Make a list from an 1-dimensional array."
+  (loop for i below (array-dimension array 0) collect (aref array i)))
+
+;;; Even the list can't form an array, like '((1 2) (3))
+;;; We can still get the answer of '((1 2) (3 whatever)).
+(defun list-dimensions (list depth)
+  "List counterpart of function ARRAY-DIMENSIONS."
+  (loop repeat depth
+       collect (length list)
+       do (setf list (car list))))
+
+;;; Only sparse vector is needed.
+;;; Simply switch between sparse vector and normal vector.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defstruct sparse-vector
+    (values (make-array 0) :type simple-array)
+    (index (make-array 0 :element-type 'fixnum) :type simple-array)
+    (len 0 :type fixnum)))
+
+(defun make-sparse-vector-from-vector (vector)
+  "Make a sparse vector from a general vector."
+  (declare (type vector vector))
+  (let ((len (length vector))
+	(values ())
+	(index ()))
+    (loop for i from 0 to (1- len) do
+	 (let ((value (aref vector i)))
+	   (if (/= 0 value)
+	       (progn
+		 (push value values)
+		 (push i index)))))
+    (make-sparse-vector :values (list-to-array (reverse values) 1)
+			:index (list-to-array (reverse index) 1)
+			:len len)))
+
+(defun make-vector-from-sparse-vector (svec)
+  "Make a general vector from a sparse vector."
+  (declare (type sparse-vector svec))
+  )
+
+(defun aref-sparse-vector (svec index)
+  "AREF function of a sparse vector."
+  (declare (type sparse-vector svec)
+	   (type fixnum index))
+  (loop for i from 0 to (1- (length (sparse-vector-index svec))) do
+       (if (= index (aref (sparse-vector-index svec) i))
+	   (return-from aref-sparse-vector (aref (sparse-vector-values svec) i))))
+  0)
+
+;;; TEST FAILED.
+(defun (setf aref-sparse-vector) (value svec index)
+  "(SETF AREF) function of a sparse vector."
+  (declare (type sparse-vector svec)
+	   (type fixnum index))
+  (loop for i from 0 to (1- (length (sparse-vector-index svec))) do
+       (let ((ind (aref (sparse-vector-index svec) i)))
+	 (if (<= index ind)
+	     ;; Just substitute it...
+	     (if (= index ind)
+		 (progn
+		   (setf (aref (sparse-vector-values svec) index) value)
+		   (return-from aref-sparse-vector))
+		 ;; The first time we meet a index greater than our goal.
+		 (let ((helper1 ())
+		       (helper2 ())
+		       (values-list (1d-array-to-list (sparse-vector-values svec)))
+		       (index-list (1d-array-to-list (sparse-vector-index svec))))
+		   (loop for j from 0 to (- i 2) do
+			(push (pop values-list) helper1)
+			(push (pop index-list) helper2))
+
+		   (push value helper1)
+		   (push index helper2)
+
+		   (loop for j from 0 to (1- i) do
+			(push (pop helper1) values-list)
+			(push (pop helper2) index-list))
+		   (setf (sparse-vector-values svec) (list-to-array values-list 1)
+			 (sparse-vector-index svec) (list-to-array index-list 1))))))))
+
 (defun random-array (length start end)
   "Get an array of length LENGTH, numbers in array ranging from START to END."
   (declare (type fixnum length start end)
@@ -45,7 +132,6 @@
   "Vector version of DOXXX macros."
   `(map nil #'(lambda (,var) ,@body) ,vector))
 
-;;; TEST
 (defun matrix-invert (matrix)
   "Get the inversion of a square matrix."
   (declare (type square-matrix matrix))
@@ -131,3 +217,118 @@
 		     (aref out j i) temp))))
     ;; Return the inverted matrix and its determinant.
     (values out det)))
+
+;;; FIXME: Make it non-destructive...
+(defun negative-sparse-vector (svec)
+  "Negating function of a sparse vector."
+  (declare (type sparse-vector svec))
+  (loop for i from 0 to (1- (length (sparse-vector-values svec))) do
+       (setf (aref (sparse-vector-values svec) i) (- (aref (sparse-vector-values svec) i)))))
+
+;;; COMPILE FAILED.
+(defun sparse-vector-+-2 (svec1 svec2)
+  "Helper function of general sparse vector addition."
+  (declare (type sparse-vector svec1 svec2))
+  (assert (= (sparse-vector-len svec1)
+	     (sparse-vector-len svec2))
+	  (svec1 svec2)
+	  "Size mismatch, two vectors of length ~D and ~D."
+	  (sparse-vector-len svec1)
+	  (sparse-vector-len svec2))
+  (let ((len (sparse-vector-len svec1))
+	(ilen (length (sparse-vector-index svec2)))
+	(value-index (mapcar #'list
+			     (1d-array-to-list (sparse-vector-values svec1))
+			     (1d-array-to-list (sparse-vector-index svec2)))))
+    (flet ((list-second (lst) (mapcar #'second lst))
+	   (second-< (lst1 lst2)
+	     (if (< (second lst1) (second lst2))
+		 t
+		 nil))
+	   (find-nth (item lst)
+	     (let ((i 1))
+	       (dolist (obj lst)
+		 (if (/= item obj)
+		     (incf i)))
+	       i)))
+      ;; If we have found a slot are nonzero in both vectors,
+      ;; add the value of svec2 to the value of svec1,
+      ;; if there's a new slot in svec2, push it to the back.
+      (loop for i from 0 to (1- ilen) do
+	   (let ((item (aref (sparse-vector-index svec2) i))
+		 (val (aref (sparse-vector-values svec2) i))
+		 (nth 0))
+	     ;; Here in order to evaluate T use n+1 instead of n...
+	     (if (setf nth (find-nth item (list-second value-index)))
+		 (incf (first (nth (1- nth) value-index)) val)
+		 ;; Not found, push it to the back.
+		 (push (list val item) value-index))))
+      (setf value-index (sort value-index #'second-<)))
+    (make-sparse-vector :values (list-to-array (mapcar #'first value-index) 1)
+			:index (list-to-array (mapcar #'second value-index) 1)
+			:len len)))
+
+(defun sparse-vector---2 (svec1 svec2)
+  "Helper function of general sparse vector subtraction."
+  (declare (type sparse-vector svec1 svec2))
+  (sparse-v-+-2 svec1 (negative-sparse-vector svec2)))
+
+(defun sparse-vector-+ (svec &rest more)
+  "Addition function of sparse vectors, from left to right."
+  (declare (type sparse-vector svec))
+  (reduce #'sparse-v-+-2 (cons svec more)))
+
+(defun sparse-vector-- (svec &rest more)
+  "Subtraction function of sparse vectors, from left to right."
+  (declare (type sparse-vector svec))
+  (reduce #'sparse-v---2 (cons svec more)))
+
+;;; TEST FAILED.
+(defun matrix-*-sparse-vector (mat svec)
+  "Multiplication routine of a general matrix and a sparse vector."
+  (declare (type matrix mat)
+	   (type sparse-vector svec))
+  (assert (= (array-dimension mat 1)
+	     (sparse-vector-len svec))
+	  (mat svec)
+	  "Size mismatch, matrix with ~D columns and vector of length ~D."
+	  (array-dimension mat 1)
+	  (sparse-vector-len svec))
+  (let* ((slen (sparse-vector-len svec))
+	 (mlen (array-dimension mat 0))
+	 (out (make-array mlen :initial-element 0)))
+    (loop for i from 0 to (1- mlen) do
+	 (loop for j from 0 to (1- slen) do
+	      (incf (aref out i) (* (aref mat i (aref (sparse-vector-index svec) j))
+				    (aref (sparse-vector-values svec) j)))))
+    out))
+
+;;; Untested.
+(defun sparse-inner-product (svec1 svec2)
+  "Inner product of two sparse vectors."
+  (declare (type sparse-vector svec1 svec2))
+  (assert (= (sparse-vector-len svec1)
+	     (sparse-vector-len svec2))
+	  (svec1 svec2)
+	  "Size mismatch, two vectors of length ~D and ~D."
+	  (sparse-vector-len svec1)
+	  (sparse-vector-len svec2))
+  (let* ((ilen1 (length (sparse-vector-index svec1)))
+	 (ilen2 (length (sparse-vector-index svec2)))
+	 (vout (make-array ilen1 :initial-element 0))
+	 (iout (make-array ilen1 :initial-element 0))
+	 (iptr 0))
+    ;; Loop through svec1, if there's an item of svec2 in slot i nonzero,
+    ;; multiply them and add it to the new vector, or do nothing.
+    (loop for i from 0 to (1- ilen1) do
+	 (loop for j from 0 to (1- ilen2) do
+	      (if (= (aref (sparse-vector-index svec2) j)
+		     (aref (sparse-vector-index svec1) i))
+		  (setf (aref vout iptr)
+			(* (aref (sparse-vector-values svec1) i)
+			   (aref (sparse-vector-values svec2) j))
+			(aref iout iptr) (aref (sparse-vector-index svec1) i)
+			(iptr (1+ iptr))))))
+    (make-sparse-vector :values (ignore-trailing-zero vout)
+			:index (ignore-trailing-zero iout)
+			:len (sparse-vector-len svec1))))

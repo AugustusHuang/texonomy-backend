@@ -301,7 +301,6 @@
 	       (aref out-index i) (aref index i)))
     out))
 
-;;; SOME CODE UNREACHABLE.
 (defun sparse-vector-+-2 (svec1 svec2)
   "Helper function of general sparse vector addition."
   (declare (type sparse-vector svec1 svec2))
@@ -314,29 +313,29 @@
   (let ((len (sparse-vector-len svec1))
 	(ilen (length (sparse-vector-index svec2)))
 	(value-index (mapcar #'list
-			     (1d-array-to-list (sparse-vector-values svec2))
-			     (1d-array-to-list (sparse-vector-index svec2)))))
+			     (1d-array-to-list (sparse-vector-values svec1))
+			     (1d-array-to-list (sparse-vector-index svec1)))))
     (flet ((list-second (lst) (mapcar #'second lst))
 	   (second-< (lst1 lst2)
 	     (if (< (second lst1) (second lst2))
 		 t
 		 nil))
+	   ;; Assuming no repeat item, since we use it only to index array,
+	   ;; it will cause no mistakes.
 	   (find-nth (item lst)
-	     (let ((i 1))
-	       (dolist (obj lst)
-		 (if (/= item obj)
-		     (incf i)))
-	       i)))
+	     (loop for i from 0 to (1- (length lst)) do
+		  (if (= item (nth i lst))
+		      (return-from find-nth i)))
+	     nil))
       ;; If we have found a slot are nonzero in both vectors,
       ;; add the value of svec2 to the value of svec1,
       ;; if there's a new slot in svec2, push it to the back.
       (loop for i from 0 to (1- ilen) do
 	   (let ((item (aref (sparse-vector-index svec2) i))
 		 (val (aref (sparse-vector-values svec2) i))
-		 (nth 0))
-	     ;; Here in order to evaluate T use n+1 instead of n...
-	     (if (setf nth (find-nth item (list-second value-index)))
-		 (incf (first (nth (1- nth) value-index)) val)
+		 (n 0))
+	     (if (setf n (find-nth item (list-second value-index)))
+		 (incf (first (nth n value-index)) val)
 		 ;; Not found, push it to the back.
 		 (push (list val item) value-index))))
       (setf value-index (sort value-index #'second-<)))
@@ -347,17 +346,17 @@
 (defun sparse-vector---2 (svec1 svec2)
   "Helper function of general sparse vector subtraction."
   (declare (type sparse-vector svec1 svec2))
-  (sparse-v-+-2 svec1 (negative-sparse-vector svec2)))
+  (sparse-vector-+-2 svec1 (negative-sparse-vector svec2)))
 
 (defun sparse-vector-+ (svec &rest more)
   "Addition function of sparse vectors, from left to right."
   (declare (type sparse-vector svec))
-  (reduce #'sparse-v-+-2 (cons svec more)))
+  (reduce #'sparse-vector-+-2 (cons svec more)))
 
 (defun sparse-vector-- (svec &rest more)
   "Subtraction function of sparse vectors, from left to right."
   (declare (type sparse-vector svec))
-  (reduce #'sparse-v---2 (cons svec more)))
+  (reduce #'sparse-vector---2 (cons svec more)))
 
 (defun matrix-*-sparse-vector (mat svec)
   "Multiplication routine of a general matrix and a sparse vector."
@@ -380,9 +379,10 @@
 				    (aref values j)))))
     out))
 
-;;; Untested.
+;;; The new sparse vector will have index array the intersection of two
+;;; original arrays, so the implementation maybe easier.
 (defun sparse-inner-product (svec1 svec2)
-  "Inner product of two sparse vectors."
+  "Inner product function of two sparse vectors."
   (declare (type sparse-vector svec1 svec2))
   (assert (= (sparse-vector-len svec1)
 	     (sparse-vector-len svec2))
@@ -390,22 +390,22 @@
 	  "Size mismatch, two vectors of length ~D and ~D."
 	  (sparse-vector-len svec1)
 	  (sparse-vector-len svec2))
-  (let* ((ilen1 (length (sparse-vector-index svec1)))
-	 (ilen2 (length (sparse-vector-index svec2)))
-	 (vout (make-array ilen1 :initial-element 0))
-	 (iout (make-array ilen1 :initial-element 0))
-	 (iptr 0))
-    ;; Loop through svec1, if there's an item of svec2 in slot i nonzero,
-    ;; multiply them and add it to the new vector, or do nothing.
-    (loop for i from 0 to (1- ilen1) do
-	 (loop for j from 0 to (1- ilen2) do
-	      (if (= (aref (sparse-vector-index svec2) j)
-		     (aref (sparse-vector-index svec1) i))
-		  (setf (aref vout iptr)
-			(* (aref (sparse-vector-values svec1) i)
-			   (aref (sparse-vector-values svec2) j))
-			(aref iout iptr) (aref (sparse-vector-index svec1) i)
-			(iptr (1+ iptr))))))
-    (make-sparse-vector :values (ignore-trailing-zero vout)
-			:index (ignore-trailing-zero iout)
-			:len (sparse-vector-len svec1))))
+  (let* ((values1 (sparse-vector-values svec1))
+	 (values2 (sparse-vector-values svec2))
+	 (index1 (1d-array-to-list (sparse-vector-index svec1)))
+	 (index2 (1d-array-to-list (sparse-vector-index svec2)))
+	 (index (sort (intersection index1 index2) #'<))
+	 (out 0))
+    (flet ((find-nth (item lst)
+	     (loop for i from 0 to (1- (length lst)) do
+		  (if (= (nth i lst) item)
+		      (return-from find-nth i)))
+	     nil))
+      ;; All entries in INDEX will be in INDEX1 and INDEX2, get their
+      ;; corresponding index, and their corresponding value can be found
+      ;; easily, accumulate their products together then...
+      (loop for i from 0 to (1- (length index)) do
+	   (let ((i1 (find-nth (nth i index) index1))
+		 (i2 (find-nth (nth i index) index2)))
+	     (incf out (* (aref values1 i1) (aref values2 i2))))))
+    out))

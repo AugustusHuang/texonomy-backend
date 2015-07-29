@@ -29,38 +29,95 @@
 (defun sort-index (seq predicate)
   )
 
+;;; Error function, inspired by Python implementation.
 (defun erf (vec)
-  )
+  "Error function, iterating through the vector."
+  (declare (type vector vec))
+  (let* ((len (length vec))
+	 (a1 0.254829592)
+	 (a2 -0.284496736)
+	 (a3 1.421413741)
+	 (a4 -1.453152027)
+	 (a5 1.061405429)
+	 (p 0.3275911)
+	 (out (make-array len :initial-element 0)))
+    (loop for i from 0 to (1- len) do
+	 (let* ((sign (if (>= (aref vec i) 0) 1 -1))
+		(abs-value (abs (aref vec i)))
+		(temp (/ 1.0 (+ 1.0 (* p abs-value)))))
+	   (setf (aref out i) (* sign
+				 (- 1.0 (* temp
+					   (exp (* abs-value (- abs-value)))
+					   (+ a1 (* temp (+ a2 (* temp (+ a3 (* temp (+ a4 (* temp a5))))))))))))))
+    out))
 
-(defun elementwise-* (vec1 vec2)
+(defun elementwise-* (v1 v2)
   "Element-wise multiplication of two vectors, if one of them is a scalar, expand it to a constant vector."
-  (declare (type (or number vector) vec1 vec2))
-  (assert (= (length vec1)
-	     (length vec2))
-	  (vec1 vec2)
-	  "Size mismatch, two vectors of size ~D and ~D."
-	  (length vec1)
-	  (length vec2))
-  (let* ((len (length vec1))
-	 (out (make-array len :initial-element 0)))
-    (loop for i from 0 to (1- len) do
-	 (setf (aref out i) (* (aref vec1 i) (aref vec2 i))))
-    out))
+  (declare (type (or number vector) v1 v2))
+  (typecase v1
+    (vector
+     (typecase v2
+       (vector
+	(assert (= (length v1) (length v2))
+		(v1 v2)
+		"Size mismatch, two vectors of size ~D and ~D."
+		(length v1)
+		(length v2))
+	(let* ((len (length v1))
+	       (out (make-array len :initial-element 0)))
+	  (loop for i from 0 to (1- len) do
+	       (setf (aref out i) (* (aref v1 i) (aref v2 i))))
+	  out))
+       (number
+	(let* ((len (length v1))
+	       (out (make-array len :initial-element 0)))
+	  (loop for i from 0 to (1- len) do
+	       (setf (aref out i) (* (aref v1 i) v2)))
+	  out))))
+    (number
+     (typecase v2
+       (vector
+	(let* ((len (length v2))
+	       (out (make-array len :initial-element 0)))
+	  (loop for i from 0 to (1- len) do
+	       (setf (aref out i) (* (aref v2 i) v1)))
+	  out))
+       (number
+	(* v1 v2))))))
 
-(defun elementwise-/ (vec1 vec2)
+(defun elementwise-/ (v1 v2)
   "Element-wise division of two vectors, if one of them is a scalar, expand it to a constant vector."
-  (declare (type (or number vector) vec1 vec2))
-  (assert (= (length vec1)
-	     (length vec2))
-	  (vec1 vec2)
-	  "Size mismatch, two vectors of size ~D of ~D."
-	  (length vec1)
-	  (length vec2))
-  (let* ((len (length vec1))
-	 (out (make-array len :initial-element 0)))
-    (loop for i from 0 to (1- len) do
-	 (setf (aref out i) (/ (aref vec1 i) (aref vec2 i))))
-    out))
+  (declare (type (or number vector) v1 v2))
+  (typecase v1
+    (vector
+     (typecase v2
+       (vector
+	(assert (= (length v1) (length v2))
+		(v1 v2)
+		"Size mismatch, two vectors of size ~D and ~D."
+		(length v1)
+		(length v2))
+	(let* ((len (length v1))
+	       (out (make-array len :initial-element 0)))
+	  (loop for i from 0 to (1- len) do
+	       (setf (aref out i) (/ (aref v1 i) (aref v2 i))))
+	  out))
+       (number
+	(let* ((len (length v1))
+	       (out (make-array len :initial-element 0)))
+	  (loop for i from 0 to (1- len) do
+	       (setf (aref out i) (/ (aref v1 i) v2)))
+	  out))))
+    (number
+     (typecase v2
+       (vector
+	(let* ((len (length v2))
+	       (out (make-array len :initial-element 0)))
+	  (loop for i from 0 to (1- len) do
+	       (setf (aref out i) (/ v1 (aref v2 i))))
+	  out))
+       (number
+	(/ v1 v2))))))
 
 ;;; Transcript into Lisp...
 (defun fdrthresh (vec param)
@@ -85,4 +142,11 @@
   "Apply the soft threshold PARAM to VEC."
   (declare (type vector vec)
 	   (type real param))
-  )
+  (let* ((len (length vec))
+	 (out (make-array len :initial-element 0)))
+    (loop for i from 0 to (1- len) do
+	 (let* ((sign (if (>= (aref vec i) 0) 1 -1))
+		(abs-value (abs (aref vec i)))
+		(temp (- abs-value param)))
+	   (set (aref out i) (* sign (/ (+ temp (abs temp)) 2)))))
+    out))

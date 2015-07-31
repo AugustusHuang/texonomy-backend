@@ -212,3 +212,52 @@
     out))
 
 ;;; Some main algorithms solving L_1 minimization problems, the core of CS.
+;;; Those functions are directly transcripted into Lisp, originally appeared
+;;; in SparseLab, implemented by D. Donoho, V. Stodden, Y. Tsaig, I. Drori and
+;;; other contributors, I appreciate them.
+(defun stagewise-omp (matrix vec &key (thresh #'fdrthresh) (param 0.5) (iter 10) (err 1e-5))
+  "Stagewise Orthogonal Matching Pursuit algorithm, get an approximating solution to L_1 minimization problem."
+  (declare (type matrix matrix)
+	   ;; VEC will be a vector, since it's not necessarily be sparse.
+	   (type vector vector))
+  (assert (= (array-dimension matrix 0)
+	     (length vec))
+	  (matrix vec thresh param iter err)
+	  "Size mismatch, matrix of size ~D-by-~D but vector of length ~D."
+	  (array-dimension matrix 0)
+	  (array-dimension matrix 1)
+	  (length vec))
+  (let* ((len (length vec))
+	 (col (array-dimension matrix 1))
+	 ;; Initially the residual will be VEC.
+	 (residual vec)
+	 (vnorm (norm vec))
+	 (i-full (make-1-to-n-vector col))
+	 (i-now ())
+	 (active ())
+	 (j-active ())
+	 (x-i (make-array col :initial-element 0))
+	 ;; Now the output sparse vector is zero-sparse vector.
+	 (out (make-sparse-vector :len col)))
+    ;; Iterate ITER times and output the result in sparse vector form.
+    (loop for i from 0 to (1- iter) do
+	 (let* ((corr (elementwise-/ (vector-* (elementwise-* (sqrt n)
+							      (transpose matrix))
+					       residual)
+				     (norm residual)))
+		(thr (funcall thresh corr param)))
+	   (setf i-now (1d-array-to-list (hardthresh (vector-abs corr) thr))
+		 j-active (union active i-now))
+	   (if (= (length j-active) (length active))
+	       ;; Maybe we shall use some more gentle way?
+	       (go done))
+	   (setf active j-active
+		 x-i (solve (mask-matrix matrix active) vec)
+		 residual (elementwise-- (vector-* (mask-matrix matrix active)
+						   x-i)))
+	   (if (<= (norm residual) (* err vnorm))
+	       (go done))))
+    ;; No way to assign a list to a vector... FIXME
+    (setf (sparse-vector-values out) x-i
+	  (sparse-vector-index out) active)
+    out))

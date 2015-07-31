@@ -66,6 +66,7 @@
     (push value (cdr (nthcdr dis list)))
     list))
 
+;;; Shall we make every function runnable with argument of type SPARSE-VECTOR?
 (defun vector-abs (vec)
   "Vector version of ABS absolute value function."
   (declare (type vector vec))
@@ -80,6 +81,25 @@
   (declare (type vector vec))
   ;; TODO: We should choose a function, or write it by ourselves?
   )
+
+(defun norm (vec)
+  "Compute a vector's norm, input can be of type VECTOR or SPARSE-VECTOR."
+  (declare (type (or vector sparse-vector) vec))
+  (typecase vec
+    (vector
+     (let ((len (length vec))
+	   (out 0))
+       (loop for i from 0 to (1- len) do
+	    (incf out (* (aref vec i) (aref vec i))))
+       out))
+    (sparse-vector
+     (let* ((values (sparse-vector-values vec))
+	    (vlen (length values))
+	    (out 0))
+       (loop for i from 0 to (1- vlen) do
+	    ;; We only concern with non-zero values.
+	    (incf out (* (aref values i) (aref values i))))
+       out))))
 
 ;;; Only sparse vector is needed.
 ;;; Simply switch between sparse vector and normal vector.

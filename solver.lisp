@@ -26,10 +26,42 @@
 (in-package :texonomy-cs)
 
 ;;; Some helper functions... Perhaps we shall move them into util package?
-(defun sort-index (seq predicate)
-  )
+(defun make-1-to-n-list (n)
+  "Helper function, generate a list from 1 to n inclusively."
+  (let ((out ()))
+    (loop for i from 1 to n do
+	 (push i out))
+    (reverse out)))
 
-;;; Error function, inspired by Python implementation.
+(defun make-1-to-n-vector (n)
+  "Helper function, generate a vector from 1 to n inclusively."
+  (let ((out (make-array n :initial-element 0)))
+    (loop for i from 1 to n do
+	 (setf (svref out (1- i)) i))
+    out))
+
+(defun sort-index (seq predicate)
+  "Sort function with sorted index stored and returned."
+  (declare (type sequence seq)
+	   (type function predicate))
+  (typecase seq
+    (list
+     (let ((seq-index (mapcar #'list seq (make-1-to-n-list (length seq)))))
+       (flet ((first-predicate (lst1 lst2)
+		(if (funcall predicate (first lst1) (first lst2))
+		    t
+		    nil)))
+	 (mapcar #'second (sort seq-index #'first-predicate)))))
+    (vector
+     (let* ((seq-list (:texonomy-util::1d-array-to-list seq))
+	    (seq-index (mapcar #'list seq-list (make-1-to-n-list (length seq)))))
+       (flet ((first-predicate (lst1 lst2)
+		(if (funcall predicate (first lst1) (first lst2))
+		    t
+		    nil)))
+	 (mapcar #'second (sort seq-index #'first-predicate)))))))
+
+;;; Error function, inspired by the Python version of implementation.
 (defun erf (vec)
   "Error function, iterating through the vector."
   (declare (type vector vec))
@@ -49,6 +81,16 @@
 				 (- 1.0 (* temp
 					   (exp (* abs-value (- abs-value)))
 					   (+ a1 (* temp (+ a2 (* temp (+ a3 (* temp (+ a4 (* temp a5))))))))))))))
+    out))
+
+(defun erfc (vec)
+  "Compliment of error function, iterate over the vector."
+  (declare (type vector vec))
+  (let* ((len (length vec))
+	 (out (make-array len :initial-element 0))
+	 (erf-vec (erf vec)))
+    (loop for i from 0 to (1- len) do
+	 (setf (aref out i) (1- (aref erf-vec i))))
     out))
 
 (defun elementwise-* (v1 v2)
@@ -124,7 +166,25 @@
   "Get the fdr threshold of VEC with PARAM."
   (declare (type vector vec)
 	   (type real param))
-  )
+  (let* ((abs-vec (vector-abs vec))
+	 (len (length vec))
+	 (sorted-vec (sort vec #'<))
+	 (sort-index (sort-index vec #'<))
+	 (pobs (erfc (elementwise-/ sorted-vec (sqrt 2)))))
+    (let* ((n (make-1-to-n-vector len))
+	   (pnull (elememtwise-/ n len))
+	   (maximum 0))
+      (loop for i from 0 to (1- (length pobs)) do
+	 ;; pobs has the same length as sorted-vec,
+	 ;; and pnull has the same length as vec.
+	   (let ((good (<= (aref probs (- (1- n) i)) (* param (aref pnull i)))))
+	     (if (and good (> (aref n i) maximum))
+		 (setf maximum (aref n i)))))
+      (if (/= maximum 0)
+	  ;; We've found some GOOD non-nil.
+	  (aref abs-vec (nth (- (1+ len) maximum) sort-index))
+	  ;; All GOODs are nil, return trivial value.
+	  (+ 0.01 (vector-max abs-vec))))))
 
 (defun hardthresh (vec param)
   "Apply the hard threshold PARAM to VEC."
@@ -150,3 +210,5 @@
 		(temp (- abs-value param)))
 	   (set (aref out i) (* sign (/ (+ temp (abs temp)) 2)))))
     out))
+
+;;; Some main algorithms solving L_1 minimization problems, the core of CS.

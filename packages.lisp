@@ -40,6 +40,7 @@
 	   :aref-sparse-vector
 	   :random-array
 	   :random-matrix
+	   :vector-abs
 	   :with-gensyms
 	   :doseq
 	   :dovec
@@ -49,7 +50,8 @@
 	   :sparse-vector-+
 	   :sparse-vector--
 	   :matrix-*-sparse-vector
-	   :sparse-inner-product))
+	   :sparse-inner-product
+	   :sparse-vector-abs))
 
 ;;; Compressed sensing package, will contain everything about the underlying
 ;;; core tech CS.
@@ -65,7 +67,16 @@
   (:nicknames :tex-rec)
   (:use :cl
 	:texonomy-util
-	:texonomy-cs)
+	:texonomy-cs
+	:texonomy-graphic)
+  (:export))
+
+;;; Core graphic manipulation package, will contain all things do with tex
+;;; font/symbol graph, like resize, resample, random sample etc.
+(defpackage :texonomy-graphic
+  (:nicknames :tex-graph)
+  (:use :cl
+	:texonomy-util)
   (:export))
 
 ;;; OPTIONAL: Server package,

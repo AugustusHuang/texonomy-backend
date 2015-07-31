@@ -66,6 +66,21 @@
     (push value (cdr (nthcdr dis list)))
     list))
 
+(defun vector-abs (vec)
+  "Vector version of ABS absolute value function."
+  (declare (type vector vec))
+  (let* ((len (length vec))
+	 (out (make-array len :initial-element 0)))
+    (loop for i from 0 to (1- len) do
+	 (setf (aref out i) (abs (aref vec i))))
+    out))
+
+(defun vector-max (vec)
+  "Vector version of MAX function, scan over the vector and find the maximum."
+  (declare (type vector vec))
+  ;; TODO: We should choose a function, or write it by ourselves?
+  )
+
 ;;; Only sparse vector is needed.
 ;;; Simply switch between sparse vector and normal vector.
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -442,4 +457,18 @@
 	   (let ((i1 (find-nth (nth i index) index1))
 		 (i2 (find-nth (nth i index) index2)))
 	     (incf out (* (aref values1 i1) (aref values2 i2))))))
+    out))
+
+(defun sparse-vector-abs (svec)
+  "Sparse vector version of ABS function."
+  (declare (type sparse-vector svec))
+  (let* ((len (sparse-vector-len svec))
+	 (index (sparse-vector-index svec))
+	 (index-len (length index))
+	 (out (make-sparse-vector :values (make-array index-len :initial-element 0)
+				  :index index
+				  :len len)))
+    (loop for i from 0 to (1- index-len) do
+	 (setf (aref (sparse-vector-values out) i)
+	       (abs (aref (sparse-vector-values svec) i))))
     out))

@@ -79,8 +79,13 @@
 (defun vector-max (vec)
   "Vector version of MAX function, scan over the vector and find the maximum."
   (declare (type vector vec))
-  ;; TODO: We should choose a function, or write it by ourselves?
-  )
+  (let ((len (length vec))
+	(out 0))
+    (loop for i from 0 to (1- len) do
+	 (let ((slot (aref vec i)))
+	   (if (> slot out)
+	       (setf out slot))))
+    out))
 
 (defun norm (vec)
   "Compute a vector's norm, input can be of type VECTOR or SPARSE-VECTOR."
@@ -355,6 +360,18 @@
 	      (setf (aref out i j) (conjugate (aref matrix i j)))))
     out))
 
+(defun matrix-transpose (matrix)
+  "Get the transposition matrix of a matrix."
+  (declare (type matrix matrix))
+  (let* ((row (array-dimension matrix 0))
+	 (col (array-dimension matrix 1))
+	 (out (make-array `(,col ,row) :initial-element 0)))
+    (loop for i from 0 to (1- row) do
+	 (loop for j from 0 to (1- col) do
+	      (setf (aref out j i)
+		    (aref matrix i j))))
+    out))
+
 (defun negate-sparse-vector (svec)
   "Negating function of a sparse vector."
   (declare (type sparse-vector svec))
@@ -492,3 +509,16 @@
 	 (setf (aref (sparse-vector-values out) i)
 	       (abs (aref (sparse-vector-values svec) i))))
     out))
+
+(defun solve (matrix vec)
+  "Solve the problem of linear functions Ax = b. Using Gaussian elimination."
+  (declare (type matrix matrix)
+	   (type vector vec))
+  )
+
+(defun mask-matrix (matrix mask)
+  "Apply a Column mask to the matrix, make masked columns all zero."
+  (declare (type matrix matrix)
+	   ;; FIXME: Shall we make list acceptable?
+	   (type (or vector list) mask))
+  )

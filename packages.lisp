@@ -46,12 +46,15 @@
 	   :dovec
 	   :matrix-invert
 	   :matrix-conjugate
+	   :matrix-transpose
 	   :negate-sparse-vector
 	   :sparse-vector-+
 	   :sparse-vector--
 	   :matrix-*-sparse-vector
 	   :sparse-inner-product
-	   :sparse-vector-abs))
+	   :sparse-vector-abs
+	   :solve
+	   :mask-matrix))
 
 ;;; Compressed sensing package, will contain everything about the underlying
 ;;; core tech CS.

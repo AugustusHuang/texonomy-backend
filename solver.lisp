@@ -215,6 +215,7 @@
 ;;; Those functions are directly transcripted into Lisp, originally appeared
 ;;; in SparseLab, implemented by D. Donoho, V. Stodden, Y. Tsaig, I. Drori and
 ;;; other contributors, I appreciate them.
+;;; TODO: TRANSPOSE, SOLVE, MASK-MATRIX
 (defun stagewise-omp (matrix vec &key (thresh #'fdrthresh) (param 0.5) (iter 10) (err 1e-5))
   "Stagewise Orthogonal Matching Pursuit algorithm, get an approximating solution to L_1 minimization problem."
   (declare (type matrix matrix)
@@ -247,6 +248,7 @@
 				     (norm residual)))
 		(thr (funcall thresh corr param)))
 	   (setf i-now (1d-array-to-list (hardthresh (vector-abs corr) thr))
+		 ;; UNION apply on lists, change them...
 		 j-active (union active i-now))
 	   (if (= (length j-active) (length active))
 	       ;; Maybe we shall use some more gentle way?

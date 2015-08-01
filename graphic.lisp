@@ -24,3 +24,8 @@
 ;;;; Graphic manipulation functions
 
 (in-package :texonomy-graphic)
+
+;;; We need LISP-MAGICK, CFFI, ALEXANDRIA, BABEL and TRIVIAL-FEATURES.
+(require :lisp-magick)
+
+;;; Make traning samples automatically from standard font graphs.

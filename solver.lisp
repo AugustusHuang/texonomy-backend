@@ -93,74 +93,7 @@
 	 (setf (aref out i) (1- (aref erf-vec i))))
     out))
 
-(defun elementwise-* (v1 v2)
-  "Element-wise multiplication of two vectors, if one of them is a scalar, expand it to a constant vector."
-  (declare (type (or number vector) v1 v2))
-  (typecase v1
-    (vector
-     (typecase v2
-       (vector
-	(assert (= (length v1) (length v2))
-		(v1 v2)
-		"Size mismatch, two vectors of size ~D and ~D."
-		(length v1)
-		(length v2))
-	(let* ((len (length v1))
-	       (out (make-array len :initial-element 0)))
-	  (loop for i from 0 to (1- len) do
-	       (setf (aref out i) (* (aref v1 i) (aref v2 i))))
-	  out))
-       (number
-	(let* ((len (length v1))
-	       (out (make-array len :initial-element 0)))
-	  (loop for i from 0 to (1- len) do
-	       (setf (aref out i) (* (aref v1 i) v2)))
-	  out))))
-    (number
-     (typecase v2
-       (vector
-	(let* ((len (length v2))
-	       (out (make-array len :initial-element 0)))
-	  (loop for i from 0 to (1- len) do
-	       (setf (aref out i) (* (aref v2 i) v1)))
-	  out))
-       (number
-	(* v1 v2))))))
-
-(defun elementwise-/ (v1 v2)
-  "Element-wise division of two vectors, if one of them is a scalar, expand it to a constant vector."
-  (declare (type (or number vector) v1 v2))
-  (typecase v1
-    (vector
-     (typecase v2
-       (vector
-	(assert (= (length v1) (length v2))
-		(v1 v2)
-		"Size mismatch, two vectors of size ~D and ~D."
-		(length v1)
-		(length v2))
-	(let* ((len (length v1))
-	       (out (make-array len :initial-element 0)))
-	  (loop for i from 0 to (1- len) do
-	       (setf (aref out i) (/ (aref v1 i) (aref v2 i))))
-	  out))
-       (number
-	(let* ((len (length v1))
-	       (out (make-array len :initial-element 0)))
-	  (loop for i from 0 to (1- len) do
-	       (setf (aref out i) (/ (aref v1 i) v2)))
-	  out))))
-    (number
-     (typecase v2
-       (vector
-	(let* ((len (length v2))
-	       (out (make-array len :initial-element 0)))
-	  (loop for i from 0 to (1- len) do
-	       (setf (aref out i) (/ v1 (aref v2 i))))
-	  out))
-       (number
-	(/ v1 v2))))))
-
+;;; Untested.
 ;;; Transcript into Lisp...
 (defun fdrthresh (vec param)
   "Get the fdr threshold of VEC with PARAM."
@@ -170,9 +103,9 @@
 	 (len (length vec))
 	 (sorted-vec (sort vec #'<))
 	 (sort-index (sort-index vec #'<))
-	 (pobs (erfc (elementwise-/ sorted-vec (sqrt 2)))))
+	 (pobs (erfc (./ sorted-vec (sqrt 2)))))
     (let* ((n (make-1-to-n-vector len))
-	   (pnull (elememtwise-/ n len))
+	   (pnull (./ n len))
 	   (maximum 0))
       (loop for i from 0 to (1- (length pobs)) do
 	 ;; pobs has the same length as sorted-vec,
@@ -186,6 +119,7 @@
 	  ;; All GOODs are nil, return trivial value.
 	  (+ 0.01 (vector-max abs-vec))))))
 
+;;; Untested.
 (defun hardthresh (vec param)
   "Apply the hard threshold PARAM to VEC."
   (declare (type vector vec)
@@ -198,6 +132,7 @@
 	       (setf (aref out i) ith))))
     out))
 
+;;; Untested.
 (defun softthresh (vec param)
   "Apply the soft threshold PARAM to VEC."
   (declare (type vector vec)
@@ -211,15 +146,15 @@
 	   (set (aref out i) (* sign (/ (+ temp (abs temp)) 2)))))
     out))
 
+;;; Untested.
 ;;; Some main algorithms solving L_1 minimization problems, the core of CS.
 ;;; Those functions are directly transcripted into Lisp, originally appeared
 ;;; in SparseLab, implemented by D. Donoho, V. Stodden, Y. Tsaig, I. Drori and
 ;;; other contributors, I appreciate them.
-;;; TODO: TRANSPOSE, SOLVE, MASK-MATRIX
 (defun stagewise-omp (matrix vec &key (thresh #'fdrthresh) (param 0.5) (iter 10) (err 1e-5))
   "Stagewise Orthogonal Matching Pursuit algorithm, get an approximating solution to L_1 minimization problem."
   (declare (type matrix matrix)
-	   ;; VEC will be a vector, since it's not necessarily be sparse.
+	   ;; VEC will be a vector, it's not necessary be sparse.
 	   (type vector vector))
   (assert (= (array-dimension matrix 0)
 	     (length vec))
@@ -242,10 +177,9 @@
 	 (out (make-sparse-vector :len col)))
     ;; Iterate ITER times and output the result in sparse vector form.
     (loop for i from 0 to (1- iter) do
-	 (let* ((corr (elementwise-/ (vector-* (elementwise-* (sqrt n)
-							      (transpose matrix))
-					       residual)
-				     (norm residual)))
+	 (let* ((corr (./ (matrix-*-vector (.* (transpose matrix) (sqrt n))
+					   residual)
+			  (norm residual)))
 		(thr (funcall thresh corr param)))
 	   (setf i-now (1d-array-to-list (hardthresh (vector-abs corr) thr))
 		 ;; UNION apply on lists, change them...
@@ -255,7 +189,7 @@
 	       (go done))
 	   (setf active j-active
 		 x-i (solve (mask-matrix matrix active) vec)
-		 residual (elementwise-- (vector-* (mask-matrix matrix active)
+		 residual (m- vec (matrix-*-vector (mask-matrix matrix active)
 						   x-i)))
 	   (if (<= (norm residual) (* err vnorm))
 	       (go done))))

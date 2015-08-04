@@ -22,6 +22,7 @@
 ;;;; OTHER DEALINGS IN THE SOFTWARE.
 
 ;;;; General package information.
+(in-package :cl-user)
 
 ;;; General utilites package, will contain basic type and routines.
 (defpackage :texonomy-util
@@ -38,21 +39,34 @@
 	   :make-sparse-vector-from-vector
 	   :make-vector-from-sparse-vector
 	   :aref-sparse-vector
-	   :random-array
-	   :random-matrix
-	   :vector-abs
-	   :with-gensyms
-	   :doseq
-	   :dovec
-	   :matrix-invert
-	   :matrix-conjugate
-	   :matrix-transpose
 	   :negate-sparse-vector
 	   :sparse-vector-+
 	   :sparse-vector--
 	   :matrix-*-sparse-vector
 	   :sparse-inner-product
 	   :sparse-vector-abs
+	   :list-to-array
+	   :1d-array-to-list
+	   :random-array
+	   :random-matrix
+	   :vector-abs
+	   :vector-max
+	   :norm
+	   :with-gensyms
+	   :dovec
+	   :matrix-invert
+	   :matrix-conjugate
+	   :matrix-transpose
+	   :matrix-*-vector
+	   :identity-matrix
+	   :m-+
+	   :m--
+	   :m-*
+	   :m-/
+	   :.+
+	   :.-
+	   :.*
+	   :./
 	   :solve
 	   :mask-matrix))
 
@@ -62,7 +76,12 @@
   (:nicknames :tex-cs)
   (:use :cl
 	:texonomy-util)
-  (:export))
+  (:export :erf
+	   :erfc
+	   :fdrthresh
+	   :hardthresh
+	   :softthresh
+	   :stagewise-omp))
 
 ;;; Core recognition package, will contain interface and wrappers of the
 ;;; front-end, and a recognition system based on CS.
@@ -82,7 +101,6 @@
 	:texonomy-util)
   (:export))
 
-;;; OPTIONAL: Server package,
 ;;; if we want to realise server on Lisp level, it will be present,
 ;;; but if we want to have a native-C socket level instead, it will
 ;;; never be here.

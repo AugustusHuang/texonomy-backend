@@ -22,3 +22,8 @@
 ;;;; OTHER DEALINGS IN THE SOFTWARE.
 
 (in-package :texonomy-recognition)
+
+;;; TODO:
+;;; Score system, if implemented in the backend, should make tuples of
+;;; score-symbols.
+;;; Sample reader, accept a sample and classify it with the power of CS.

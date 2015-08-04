@@ -28,4 +28,6 @@
 ;;; We need LISP-MAGICK, CFFI, ALEXANDRIA, BABEL and TRIVIAL-FEATURES.
 (require :lisp-magick)
 
-;;; Make traning samples automatically from standard font graphs.
+;;; TODO:
+;;; Make training samples automatically from standard font graphs.
+;;; Implement some feature extraction functions.

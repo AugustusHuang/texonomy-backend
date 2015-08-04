@@ -25,3 +25,5 @@
 
 (in-package :texonomy-server)
 
+;;; TODO: classes of acceptor, handler, sender, functions to handle different
+;;; requests, report different errors, parse json objects...

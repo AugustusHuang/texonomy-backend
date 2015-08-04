@@ -188,7 +188,7 @@
 	       ;; Maybe we shall use some more gentle way?
 	       (go done))
 	   (setf active j-active
-		 x-i (solve (mask-matrix matrix active) vec)
+		 x-i (qr-solve (mask-matrix matrix active) vec)
 		 residual (m- vec (matrix-*-vector (mask-matrix matrix active)
 						   x-i)))
 	   (if (<= (norm residual) (* err vnorm))

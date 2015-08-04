@@ -43,6 +43,25 @@
   "Make a list from an 1-dimensional array."
   (loop for i below (array-dimension array 0) collect (aref array i)))
 
+(defun 2d-array-to-vector (array)
+  "Helper function, cast a #2A((x) (y) (z))-like pseudo-vector to a normal one."
+  ;; ARRAY is a matrix indeed.
+  (declare (type matrix array))
+  (let* ((len (array-dimension array 0))
+	 (out (make-array len :initial-element 0)))
+    (loop for i from 0 to (1- len) do
+	 (setf (aref out i) (aref array i 0)))
+    out))
+
+(defun vector-to-2d-array (vec)
+  "Helper function, cast a #(x y z)-like vector to a #2A((x) (y) (z)) matrix."
+  (declare (type vector vec))
+  (let* ((len (length vec))
+	 (out (make-array `(,len ,1) :initial-element 0)))
+    (loop for i from 0 to (1- len) do
+	 (setf (aref out i 0) (aref vec i)))
+    out))
+
 ;;; Even the list can't form an array, like '((1 2) (3))
 ;;; We can still get the answer of '((1 2) (3 whatever)).
 (defun list-dimensions (list depth)
@@ -70,7 +89,7 @@
   "Vector version of ABS absolute value function."
   (declare (type vector vec))
   (let* ((len (length vec))
-	 (out (make-array len :initial-element 0)))
+	 (out (make-array len :initial-element 0.0d0)))
     (loop for i from 0 to (1- len) do
 	 (setf (aref out i) (abs (aref vec i))))
     out))
@@ -114,7 +133,7 @@
   (declare (type vector vec1 vec2))
   (let* ((len1 (length vec1))
 	 (len2 (length vec2))
-	 (out (make-array `(,len1 ,len2) :initial-element 0)))
+	 (out (make-array `(,len1 ,len2) :initial-element 0.0d0)))
     (loop for i from 0 to (1- len1) do
 	 (loop for j from 0 to (1- len2) do
 	      (setf (aref out i j) (* (aref vec1 i) (aref vec2 j)))))
@@ -166,11 +185,11 @@
   "Get the inversion of a square matrix."
   (declare (type square-matrix matrix))
   (let* ((dim (array-dimension matrix 0))
-	 (l (make-array dim :initial-element 0))
-	 (m (make-array dim :initial-element 0))
+	 (l (make-array dim :initial-element 0.0d0))
+	 (m (make-array dim :initial-element 0.0d0))
 	 (temp 0)
 	 (det 1)
-	 (out (make-array `(,dim ,dim) :initial-element 0)))
+	 (out (make-array `(,dim ,dim) :initial-element 0.0d0)))
     (when (not (equal matrix out))
       (loop for i from 0 to (1- dim) do
 	   (loop for j from 0 to (1- dim) do
@@ -253,7 +272,7 @@
   (declare (type matrix matrix))
   (let* ((row (array-dimension matrix 0))
 	 (col (array-dimension matrix 1))
-	 (out (make-array `(,row ,col) :initial-element 0)))
+	 (out (make-array `(,row ,col) :initial-element 0.0d0)))
     (loop for i from 0 to (1- row) do
 	 (loop for j from 0 to (1- col) do
 	      (setf (aref out i j) (conjugate (aref matrix i j)))))
@@ -264,7 +283,7 @@
   (declare (type matrix matrix))
   (let* ((row (array-dimension matrix 0))
 	 (col (array-dimension matrix 1))
-	 (out (make-array `(,col ,row) :initial-element 0)))
+	 (out (make-array `(,col ,row) :initial-element 0.0d0)))
     (loop for i from 0 to (1- row) do
 	 (loop for j from 0 to (1- col) do
 	      (setf (aref out j i)
@@ -283,7 +302,7 @@
 	  (length vec))
   (let ((row (array-dimension matrix 0))
 	(col (array-dimension matrix 1)))
-    (let ((out (make-array row :initial-element 0)))
+    (let ((out (make-array row :initial-element 0.0d0)))
       (loop for i from 0 to (1- row) do
 	   (loop for j from 0 to (1- col) do
 		(incf (aref out i) (* (aref matrix i j) (aref vec j)))))
@@ -303,7 +322,7 @@
   (typecase array1
     (vector
      (let* ((len (length array1))
-	    (out (make-array len :initial-element 0)))
+	    (out (make-array len :initial-element 0.0d0)))
        (loop for i from 0 to (1- len) do
 	    (setf (aref out i) (funcall func
 					(aref array1 i)
@@ -313,7 +332,7 @@
      (let* ((len (array-total-size array1))
 	    (row (array-dimension array1 0))
 	    (col (array-dimension array1 1))
-	    (out (make-array `(,row ,col) :initial-element 0)))
+	    (out (make-array `(,row ,col) :initial-element 0.0d0)))
        (loop for i from 0 to (1- len) do
 	    (setf (row-major-aref out i)
 		  (funcall func
@@ -331,7 +350,7 @@
   (typecase array
     (vector
      (let* ((len (length array))
-	    (out (make-array len :initial-element 0)))
+	    (out (make-array len :initial-element 0.0d0)))
        (loop for i from 0 to (1- len) do
 	    (setf (aref out i) (funcall func
 					(aref array i)
@@ -341,7 +360,7 @@
      (let* ((len (array-total-size array))
 	    (row (array-dimension array 0))
 	    (col (array-dimension array 1))
-	    (out (make-array `(,row ,col) :initial-element 0)))
+	    (out (make-array `(,row ,col) :initial-element 0.0d0)))
        (loop for i from 0 to (1- len) do
 	    (setf (row-major-aref out i)
 		  (funcall func
@@ -356,9 +375,9 @@
 
 (defun matrix-range (matrix rstart rend cstart cend)
   "Get the ranged matrix in a matrix."
-  (let* ((rdis (1+ (- rstart rend)))
-	 (cdis (1+ (- cstart cend)))
-	 (out (make-array `(,rdis ,cdis) :initial-element 0)))
+  (let* ((rdis (1+ (- rend rstart)))
+	 (cdis (1+ (- cend cstart)))
+	 (out (make-array `(,rdis ,cdis) :initial-element 0.0d0)))
     (loop for i from 0 to (1- rdis) do
 	 (loop for j from 0 to (1- cdis) do
 	      (setf (aref out i j) (aref matrix (+ rstart i) (+ cstart j)))))
@@ -374,13 +393,15 @@
   (let ((row (array-dimension matrix 0)))
     (matrix-range matrix 0 (1- row) n n)))
 
+;;; FIXME: Could be faster, we are doing useless works when we firstly set
+;;; matrix1's value and then change them!
 (defun matrix-embed (matrix1 matrix2 row col)
   "Embed a smaller matrix into a bigger one."
   (let* ((row1 (array-dimension matrix1 0))
 	 (col1 (array-dimension matrix1 1))
 	 (row2 (array-dimension matrix2 0))
 	 (col2 (array-dimension matrix2 1))
-	 (out (make-array `(,row1 ,col1) :initial-element 0)))
+	 (out (make-array `(,row1 ,col1) :initial-element 0.0d0)))
     (loop for i from 0 to (1- row1) do
 	 (loop for j from 0 to (1- col1) do
 	      (setf (aref out i j) (aref matrix1 i j))))
@@ -390,8 +411,8 @@
     out))
 
 (defun unit-vector (length)
-  (let ((out (make-array length :initial-element 0)))
-    (setf (aref out 1) 1)
+  (let ((out (make-array length :initial-element 0.0d0)))
+    (setf (aref out 0) 1.0d0)
     out))
 
 ;;; FIXME: Speed up!
@@ -408,7 +429,7 @@
   (let* ((row1 (array-dimension matrix1 0))
 	 (col1 (array-dimension matrix1 1))
 	 (col2 (array-dimension matrix2 1))
-	 (out (make-array `(,row1 ,col2) :initial-element 0)))
+	 (out (make-array `(,row1 ,col2) :initial-element 0.0d0)))
     (loop for i from 0 to (1- row1) do
 	 (loop for j from 0 to (1- col2) do
 	      (setf (aref out i j)
@@ -420,32 +441,64 @@
 (defun householder (vec)
   (declare (type vector vec))
   (let* ((len (length vec))
-	 (sign (if (= (aref vec 0) 0)
-		   0
-		   (if (> (aref vec 0) 0)
-		       1
-		       -1)))
+	 (sign (signum (aref vec 0)))
 	 (unit (unit-vector len))
 	 (u (m+ vec (.* unit (* sign (norm vec)))))
 	 (v (./ u (aref u 0)))
 	 (beta (/ 2 (dot-product v v))))
-    (m- (identity-matrix len) (.* (tensor-product vec vec) beta))))
+    (m- (identity-matrix len)
+	(.* (tensor-product v v) beta))))
 
 (defun qr-decomposition (matrix)
   "QR decomposition function, return a matrix's QR decomposition matrices."
   (declare (type matrix matrix))
   (let ((row (array-dimension matrix 0))
 	(col (array-dimension matrix 1)))
-    (let ((q (identity-matrix row)))
+    (let ((q (identity-matrix row))
+	  (r matrix))
       (loop for i from 0 to (if (= row col) (- col 2) (1- col)) do
-	   (let* (())
-	     )))))
+	   (let* ((sub (matrix-range r i (1- row) i (1- col)))
+		  (first-col (2d-array-to-vector (mcol sub 0)))
+		  (house (matrix-embed (identity-matrix row)
+				       (householder first-col)
+				       i
+				       i)))
+	     (setf q (matrix-multiply q house)
+		   r (matrix-multiply house r))))
+      (values q r))))
 
-(defun solve (matrix vec)
-  "Solve the problem of linear functions Ax = b. Using QR solver."
+(defun qr-solve (matrix vec)
+  "Solve the problem of system of linear functions Ax = b, Using QR solver."
   (declare (type matrix matrix)
 	   (type vector vec))
-  )
+  (assert (= (array-dimension matrix 0)
+	     (length vec))
+	  (matrix vec)
+	  "Size mismatch, matrix of size ~D-by-~D but vector of length ~D."
+	  (array-dimension matrix 0)
+	  (array-dimension matrix 1)
+	  (length vec))
+  (multiple-value-bind (q r) (qr-decomposition matrix)
+    (let ((col (array-dimension r 1)))
+      (upper-triangular-solve (matrix-range r 0 (1- col) 0 (1- col))
+			      (matrix-range (vector-to-2d-array
+					     (matrix-*-vector
+					      (matrix-transpose q)
+					      vec))
+					     0 (1- col) 0 0)))))
+
+(defun upper-triangular-solve (matrix vec)
+  "Solve the problem of system of linear functions Ax = b, where A is an upper triangular matrix."
+  (declare (type matrix matrix vec))
+  (let* ((col (array-dimension matrix 1))
+	 (out (make-array col :initial-element 0.0d0)))
+    (loop for i from (1- col) downto 0 do
+	 (setf (aref out i) (/ (- (aref vec i 0)
+				  (loop for j from (1+ i) to (1- col)
+				     sum (* (aref matrix i j)
+					    (aref out j))))
+			       (aref matrix i i))))
+    out))
 
 (defun mask-matrix (matrix mask)
   "Apply a column mask to the matrix, make masked columns all zero."
@@ -454,7 +507,7 @@
   (let ((row (array-dimension matrix 0))
 	(col (array-dimension matrix 1)))
     ;; Find the complement vector of MASK, copy only those columns.
-    (let ((out (make-array `(,row ,col) :initial-element 0)))
+    (let ((out (make-array `(,row ,col) :initial-element 0.0d0)))
       (loop for j from 0 to (1- col) do
 	   (if (member j mask)
 	       ;; do nothing
@@ -462,3 +515,4 @@
 	       (loop for i from 0 to (1- row) do
 		    (setf (aref out i j) (aref matrix i j)))))
       out)))
+

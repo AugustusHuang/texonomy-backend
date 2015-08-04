@@ -30,45 +30,51 @@
   (:use :cl)
   ;; We have to export accessors, constructor, type predicate and the name of
   ;; the structure to export them as a whole...
-  (:export :sparse-vector
-	   :sparse-vector-p
-	   :make-sparse-vector
-	   :sparse-vector-values
-	   :sparse-vector-index
-	   :sparse-vector-len
-	   :make-sparse-vector-from-vector
-	   :make-vector-from-sparse-vector
-	   :aref-sparse-vector
-	   :negate-sparse-vector
-	   :sparse-vector-+
-	   :sparse-vector--
-	   :matrix-*-sparse-vector
-	   :sparse-inner-product
-	   :sparse-vector-abs
-	   :list-to-array
-	   :1d-array-to-list
-	   :random-array
-	   :random-matrix
-	   :vector-abs
-	   :vector-max
-	   :norm
-	   :with-gensyms
-	   :dovec
-	   :matrix-invert
-	   :matrix-conjugate
-	   :matrix-transpose
-	   :matrix-*-vector
-	   :identity-matrix
-	   :m-+
-	   :m--
-	   :m-*
-	   :m-/
-	   :.+
-	   :.-
-	   :.*
-	   :./
-	   :solve
-	   :mask-matrix))
+  (:export
+   ;; sparse vector routines...
+   :sparse-vector
+   :sparse-vector-p
+   :make-sparse-vector
+   :sparse-vector-values
+   :sparse-vector-index
+   :sparse-vector-len
+   :make-sparse-vector-from-vector
+   :make-vector-from-sparse-vector
+   :aref-sparse-vector
+   :negate-sparse-vector
+   :sparse-vector-+
+   :sparse-vector--
+   :matrix-*-sparse-vector
+   :sparse-inner-product
+   :sparse-vector-abs
+   ;; general routines...
+   :list-to-array
+   :1d-array-to-list
+   :2d-array-to-vector
+   :vector-to-2d-array
+   :random-array
+   :random-matrix
+   :vector-abs
+   :vector-max
+   :norm
+   :with-gensyms
+   :dovec
+   :matrix-invert
+   :matrix-conjugate
+   :matrix-transpose
+   :matrix-*-vector
+   :identity-matrix
+   :matrix-multiply
+   :m+
+   :m-
+   :m*
+   :m/
+   :.+
+   :.-
+   :.*
+   :./
+   :qr-solve
+   :mask-matrix))
 
 ;;; Compressed sensing package, will contain everything about the underlying
 ;;; core tech CS.
@@ -76,12 +82,13 @@
   (:nicknames :tex-cs)
   (:use :cl
 	:texonomy-util)
-  (:export :erf
-	   :erfc
-	   :fdrthresh
-	   :hardthresh
-	   :softthresh
-	   :stagewise-omp))
+  (:export
+   :erf
+   :erfc
+   :fdrthresh
+   :hardthresh
+   :softthresh
+   :stagewise-omp))
 
 ;;; Core recognition package, will contain interface and wrappers of the
 ;;; front-end, and a recognition system based on CS.

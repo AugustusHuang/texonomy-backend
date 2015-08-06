@@ -21,9 +21,15 @@
 ;;;; ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;;;; OTHER DEALINGS IN THE SOFTWARE.
 
-;;;; Server of texonomy.
+;;;; Server of texonomy. Directly built upon hunchentoot.
 
 (in-package :texonomy-server)
 
-;;; TODO: classes of acceptor, handler, sender, functions to handle different
-;;; requests, report different errors, parse json objects...
+;;; Dummy webserver using hunchentoot...
+;;; Port 4242 used in example of hunchentoot.
+(start (make-instance 'easy-acceptor :port 4242))
+
+(define-easy-handler (say-hello :uri "/hello") (name)
+  (setf (content-type*) "text/plain")
+  (format nil "Hello, ~@[ ~A~]!" name))
+

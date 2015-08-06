@@ -117,6 +117,31 @@
 	    (vlen (length values)))
        (sqrt (loop for i from 0 to (1- vlen) sum (expt (aref values i) 2)))))))
 
+(defun normalize (vec)
+  "Normalize a vector, input can be of type VECTOR or SPARSE-VECTOR."
+  (declare (type (or vector sparse-vector) vec))
+  (typecase vec
+    (vector
+     (let* ((len (length vec))
+	    (norm (norm vec))
+	    (out (make-array len :initial-element 0.0d0)))
+       (loop for i from 0 to (1- len) do
+	    (setf (aref out i) (/ (aref vec i) norm)))
+       out))
+    (sparse-vector
+     (let* ((values (sparse-vector-values vec))
+	    (index (sparse-vector-index vec))
+	    (slen (sparse-vector-len vec))
+	    (vlen (length values))
+	    (norm (norm vec))
+	    (out (make-sparse-vector :values (make-array vlen :initial-element 0.0d0)
+				     :index index
+				     :len slen)))
+       (loop for i from 0 to (1- vlen) do
+	    (let ((vout (sparse-vector-values out)))
+	      (setf (aref vout i) (/ (aref values i) norm))))
+       out))))
+
 (defun dot-product (vec1 vec2)
   "Dot product of two vectors, get a scalar value."
   (declare (type vector vec1 vec2))

@@ -26,4 +26,34 @@
 ;;; TODO:
 ;;; Score system, if implemented in the backend, should make tuples of
 ;;; score-symbols.
-;;; Sample reader, accept a sample and classify it with the power of CS.
+
+(defvar *current-training-set* nil)
+
+;;; TODO: maybe metadata could be larger? Like a list of symbol-score pairs?
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defstruct sample
+    (data (make-array 0) :type simple-array)
+    (meta nil :type list)))
+
+(defun load-training-samples (&optional file)
+  "load the training samples in json format, if FILE unspecified, use the default sample set."
+  )
+
+;;; Select the metadata type in TODO above...
+(defun incf-training-samples (sample)
+  "Add the SAMPLE into the training sample set."
+  )
+
+;;; Algorithm:
+;;; 1. Get the surrounding rectangle. in RECOGNITION.
+;;; 2. Resize and re-sample the training samples, in GRAPHIC.
+;;; 3. Normalize all training samples and make them a grand matrix, in UTIL.
+;;; 4. Solve L_1 minimization get the solution and residuals, in CS.
+;;; 5. Get the argmin of residuals, and it's the output, in CS.
+(defun cs-classify (vec)
+  "Main classification function, accept a test sample in vector form."
+  )
+
+(defun get-score (vec)
+  "Score system, read the VEC and generate the scores corresponding symbols."
+  )

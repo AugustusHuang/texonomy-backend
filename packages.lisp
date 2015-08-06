@@ -57,6 +57,7 @@
    :vector-abs
    :vector-max
    :norm
+   :normalize
    :with-gensyms
    :dovec
    :matrix-invert
@@ -85,9 +86,6 @@
   (:export
    :erf
    :erfc
-   :fdrthresh
-   :hardthresh
-   :softthresh
    :stagewise-omp))
 
 ;;; Core recognition package, will contain interface and wrappers of the
@@ -105,14 +103,15 @@
 (defpackage :texonomy-graphic
   (:nicknames :tex-graph)
   (:use :cl
-	:texonomy-util)
+	:texonomy-util
+	:lisp-magick)
   (:export))
 
-;;; if we want to realise server on Lisp level, it will be present,
-;;; but if we want to have a native-C socket level instead, it will
-;;; never be here.
+;;; The server will directly use hunchentoot.
 (defpackage :texonomy-server
   (:nicknames :tex-server)
   (:use :cl
-	:texonomy-util)
+	:texonomy-rec
+	:hunchentoot
+	:cl-json)
   (:export))

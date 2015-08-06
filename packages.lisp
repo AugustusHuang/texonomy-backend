@@ -30,6 +30,8 @@
   (:use :cl)
   ;; We have to export accessors, constructor, type predicate and the name of
   ;; the structure to export them as a whole...
+  (:documentation
+   "General math function package on vectors and sparse vectors.")
   (:export
    ;; sparse vector routines...
    :sparse-vector
@@ -83,6 +85,8 @@
   (:nicknames :tex-cs)
   (:use :cl
 	:texonomy-util)
+  (:documentation
+   "General compressed-sensing package to handle L_1 minimization problem.")
   (:export
    :erf
    :erfc
@@ -96,6 +100,8 @@
 	:texonomy-util
 	:texonomy-cs
 	:texonomy-graphic)
+  (:documentation
+   "Kernel tex symbol recognition package.")
   (:export))
 
 ;;; Core graphic manipulation package, will contain all things do with tex
@@ -105,6 +111,8 @@
   (:use :cl
 	:texonomy-util
 	:lisp-magick)
+  (:documentation
+   "Graphic manipulating package to make different samples.")
   (:export))
 
 ;;; The server will directly use hunchentoot.
@@ -114,4 +122,6 @@
 	:texonomy-rec
 	:hunchentoot
 	:cl-json)
+  (:documentation
+   "Server package to run back-end as a whole server.")
   (:export))

@@ -440,28 +440,66 @@
     (setf (aref out 0) 1.0d0)
     out))
 
-;;; FIXME: Speed up!
-(defun matrix-multiply (matrix1 matrix2)
-  "Normal matrix multiplication function."
-  (assert (= (array-dimension matrix1 1)
-	     (array-dimension matrix2 0))
-	  (matrix1 matrix2)
-	  "Size mismatch, multiplying two matrices of size ~D-by-~D and ~D-by-~D."
-	  (array-dimension matrix1 0)
-	  (array-dimension matrix1 1)
-	  (array-dimension matrix2 0)
-	  (array-dimension matrix2 1))
-  (let* ((row1 (array-dimension matrix1 0))
-	 (col1 (array-dimension matrix1 1))
-	 (col2 (array-dimension matrix2 1))
-	 (out (make-array `(,row1 ,col2) :initial-element 0.0d0)))
-    (loop for i from 0 to (1- row1) do
-	 (loop for j from 0 to (1- col2) do
-	      (setf (aref out i j)
-		    (loop for k from 0 to (1- col1)
-		       sum (* (aref matrix1 i k) (aref matrix2 k j))))))
-    out))
+#+sbcl
+(defun matrix-to-array (matrix)
+  (sb-c::%array-data-vector matrix))
 
+;;; Our own version.
+#-sbcl
+(defun matrix-to-array (matrix)
+  )
+
+;;; In order to have fast code... make it with side-effect...
+(defun matrix-multiply-intern (matrix1 matrix2 matrix-out)
+  "Matrix multiplication internal function, with side-effect."
+  ;(declare (optimize (speed 3) (safety 0)))
+  (let ((m1 (matrix-to-array matrix1))
+	(m2 (matrix-to-array matrix2))
+	(mo (matrix-to-array matrix-out))
+	(atemp 0.0d0))
+    (declare (type simple-array m1 m2 mo))
+    (let ((m1-row (array-dimension matrix1 0))
+	  (m1-col (array-dimension matrix1 1))
+	  (m2-row (array-dimension matrix2 0))
+	  (m2-col (array-dimension matrix2 1))
+	  (mo-row (array-dimension matrix-out 0))
+	  (mo-col (array-dimension matrix-out 1)))
+      (declare (type fixnum m1-row m1-col m2-row m2-col mo-row mo-col))
+      (if (and (= m1-col m2-row) (= m1-row mo-row) (= m2-col mo-col))
+	  ;; Inner loop from CLEM package by Cyrus Harmon.
+	  (do ((k 0 (the fixnum (1+ k))))
+	      ((>= k m1-col))
+	    (declare (type fixnum k))
+	    (do* ((i 0 (the fixnum (1+ i)))
+		  (aind k (+ aind m1-col)))
+		 ((>= i m1-row))
+	      (declare (type fixnum i aind))
+	      (setf atemp (aref m1 aind))
+	      (do ((j 0 (the fixnum (1+ j)))
+		   (bind (* k m2-col) (the fixnum (1+ bind)))
+		   (cind (* i m2-col) (the fixnum (1+ cind))))
+		  ((>= j m2-col))
+		(declare (type fixnum j bind cind))
+		(incf (aref mo cind) (* atemp (aref m2 bind))))))
+	  (error "size mismatch, matrices of size ~D-by-~D, ~D-by-~D and ~D-by-~D"
+		 m1-row m1-col m2-row m2-col mo-row mo-col))))
+    matrix-out)
+
+(defun matrix-multiply (matrix1 matrix2)
+  ;(declare (optimize (speed 3) (safety 0)))
+  (let ((row (array-dimension matrix1 0))
+	(col (array-dimension matrix2 1)))
+    (declare (type fixnum row col))
+    (if (= row col)
+	(let ((out (make-array (list (the fixnum row) (the fixnum col))
+			       :initial-element 0)))
+	  (matrix-multiply-intern matrix1 matrix2 out))
+	(error "size mismatch, matrices of size ~D-by-~D and ~D-by-~D"
+	       row
+	       (array-dimension matrix1 1)
+	       (array-dimension matrix2 0)
+	       col))))
+	  
 ;;; QR functions
 (defun householder (vec)
   (declare (type vector vec))

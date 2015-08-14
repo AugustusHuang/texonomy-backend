@@ -40,6 +40,12 @@
 	 (setf (svref out (1- i)) i))
     out))
 
+(defun find-none-0 (vec)
+  "Helper function, return a sorted list with elements indices of none-zero elements in VEC."
+  (let ((len (length vec)))
+    (loop for i from 0 to (1- len)
+	 unless (= 0 (aref vec i)) collect i)))
+
 (defun sort-index (seq predicate)
   "Sort function with sorted index stored and returned."
   (declare (type sequence seq)
@@ -53,7 +59,8 @@
 		    nil)))
 	 (mapcar #'second (sort seq-index #'first-predicate)))))
     (vector
-     (let* ((seq-list (:texonomy-util::1d-array-to-list seq))
+     (let* ((seq-list (1d-array-to-list seq))
+					;:texonomy-util::1d-array-to-list seq))
 	    (seq-index (mapcar #'list seq-list (make-1-to-n-list (length seq)))))
        (flet ((first-predicate (lst1 lst2)
 		(if (funcall predicate (first lst1) (first lst2))
@@ -90,10 +97,9 @@
 	 (out (make-array len :initial-element 0))
 	 (erf-vec (erf vec)))
     (loop for i from 0 to (1- len) do
-	 (setf (aref out i) (1- (aref erf-vec i))))
+	 (setf (aref out i) (- 1 (aref erf-vec i))))
     out))
 
-;;; Untested.
 ;;; Transcript into Lisp...
 (defun fdrthresh (vec param)
   "Get the fdr threshold of VEC with PARAM."
@@ -107,19 +113,18 @@
     (let* ((n (make-1-to-n-vector len))
 	   (pnull (./ n len))
 	   (maximum 0))
-      (loop for i from 0 to (1- (length pobs)) do
-	 ;; pobs has the same length as sorted-vec,
-	 ;; and pnull has the same length as vec.
-	   (let ((good (<= (aref probs (- (1- n) i)) (* param (aref pnull i)))))
-	     (if (and good (> (aref n i) maximum))
-		 (setf maximum (aref n i)))))
+      ;; (LENGTH POBS) = (LENGTH SORTED-VEC) = (LENGTH VEC)
+      (loop for i from 0 to (1- len) do
+	   (let ((good (<= (aref pobs (- (1- len) i)) (* param (aref pnull i)))))
+	     ;; Here (AREF N I) = (1+ I) so replace them to be more efficient.
+	     (if (and good (> (1+ i) maximum))
+		 (setf maximum (1+ i)))))
       (if (/= maximum 0)
 	  ;; We've found some GOOD non-nil.
 	  (aref abs-vec (nth (- (1+ len) maximum) sort-index))
 	  ;; All GOODs are nil, return trivial value.
 	  (+ 0.01 (vector-max abs-vec))))))
 
-;;; Untested.
 (defun hardthresh (vec param)
   "Apply the hard threshold PARAM to VEC."
   (declare (type vector vec)
@@ -132,7 +137,6 @@
 	       (setf (aref out i) ith))))
     out))
 
-;;; Untested.
 (defun softthresh (vec param)
   "Apply the soft threshold PARAM to VEC."
   (declare (type vector vec)
@@ -140,10 +144,10 @@
   (let* ((len (length vec))
 	 (out (make-array len :initial-element 0)))
     (loop for i from 0 to (1- len) do
-	 (let* ((sign (if (>= (aref vec i) 0) 1 -1))
+	 (let* ((sign (signum (aref vec i)))
 		(abs-value (abs (aref vec i)))
 		(temp (- abs-value param)))
-	   (set (aref out i) (* sign (/ (+ temp (abs temp)) 2)))))
+	   (setf (aref out i) (* sign (/ (+ temp (abs temp)) 2)))))
     out))
 
 ;;; Untested.
@@ -155,7 +159,7 @@
   "Stagewise Orthogonal Matching Pursuit algorithm, get an approximating solution to L_1 minimization problem."
   (declare (type matrix matrix)
 	   ;; VEC will be a vector, it's not necessary be sparse.
-	   (type vector vector))
+	   (type vector vec))
   (assert (= (array-dimension matrix 0)
 	     (length vec))
 	  (matrix vec thresh param iter err)
@@ -169,20 +173,22 @@
 	 (residual vec)
 	 (vnorm (norm vec))
 	 (i-full (make-1-to-n-vector col))
-	 (i-now ())
-	 (active ())
-	 (j-active ())
+	 (i-now)
+	 (active)
+	 (j-active)
 	 (x-i (make-array col :initial-element 0))
 	 ;; Now the output sparse vector is zero-sparse vector.
 	 (out (make-sparse-vector :len col)))
     ;; Iterate ITER times and output the result in sparse vector form.
     (loop for i from 0 to (1- iter) do
-	 (let* ((corr (./ (matrix-*-vector (.* (transpose matrix) (sqrt n))
+	 (let* ((corr (./ (matrix-*-vector (.* (matrix-transpose matrix)
+					       (sqrt col))
 					   residual)
 			  (norm residual)))
 		(thr (funcall thresh corr param)))
-	   (setf i-now (1d-array-to-list (hardthresh (vector-abs corr) thr))
-		 ;; UNION apply on lists, change them...
+	   ;; HARDTHRESH will output origin 'masked' vector, but
+	   ;; what we need is their indices.
+	   (setf i-now (find-none-0 (hardthresh (vector-abs corr) thr))
 		 j-active (union active i-now))
 	   (if (= (length j-active) (length active))
 	       ;; Maybe we shall use some more gentle way?
@@ -193,7 +199,10 @@
 						   x-i)))
 	   (if (<= (norm residual) (* err vnorm))
 	       (go done))))
-    ;; No way to assign a list to a vector... FIXME
+    ;; Now we are out of loop so even if SORT is destructive we only need
+    ;; its return value.
     (setf (sparse-vector-values out) x-i
-	  (sparse-vector-index out) active)
+	  (sparse-vector-index out)
+	  ;; How about apply a hard threshold to it?
+	  (hardthresh (list-to-array (sort active #'<) 1) 1e-10))
     out))

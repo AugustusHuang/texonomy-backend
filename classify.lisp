@@ -30,9 +30,13 @@
 (defvar *current-training-set* nil)
 
 ;;; TODO: maybe metadata could be larger? Like a list of symbol-score pairs?
+;;; A SAMPLE object will be:
+;;; DATA: 16 ratios/doubles
+;;; META: a list of symbol-score assoc-list, our default training sample will
+;;; be '((SYMBOL . 1))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defstruct sample
-    (data (make-array 0) :type simple-array)
+    (data (make-array 16) :type simple-array)
     (meta nil :type list)))
 
 (defun load-training-samples (&optional file)
@@ -45,7 +49,7 @@
   )
 
 ;;; Algorithm:
-;;; 1. Get the surrounding rectangle. in RECOGNITION.
+;;; 1. Get the surrounding rectangle. in RECOGNITION or in front-end.
 ;;; 2. Resize and re-sample the training samples, in GRAPHIC.
 ;;; 3. Normalize all training samples and make them a grand matrix, in UTIL.
 ;;; 4. Solve L_1 minimization get the solution and residuals, in CS.

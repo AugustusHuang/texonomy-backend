@@ -25,9 +25,16 @@
 
 (in-package :texonomy-graphic)
 
-;;; We need LISP-MAGICK, CFFI, ALEXANDRIA, BABEL and TRIVIAL-FEATURES.
-(require :lisp-magick)
-
 ;;; TODO:
 ;;; Make training samples automatically from standard font graphs.
 ;;; Implement some feature extraction functions.
+(defun make-training-sample (img)
+  )
+
+;;; TODO: Feature extraction, here I choose to make a 4x4 doubles or ratios.
+;;; Firstly get the resized square image (256px x 256px) from the front-end,
+;;; then re-sample it down to 4px x 4px by counting every 64px and get
+;;; the average color (color means 1 and white means 0).
+(defun feature-extraction (img)
+  )
+

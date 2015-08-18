@@ -102,7 +102,15 @@
 	:texonomy-graphic)
   (:documentation
    "Kernel tex symbol recognition package.")
-  (:export))
+  (:export
+   :sample
+   :make-sample
+   :sample-data
+   :sample-meta
+   :load-training-samples
+   :incf-training-samples
+   :cs-classify
+   :get-score))
 
 ;;; Core graphic manipulation package, will contain all things do with tex
 ;;; font/symbol graph, like resize, resample, random sample etc.
@@ -113,15 +121,7 @@
 	:lisp-magick)
   (:documentation
    "Graphic manipulating package to make different samples.")
-  (:export))
+  (:export
+   :make-training-sample
+   :feature-extraction))
 
-;;; The server will directly use hunchentoot.
-(defpackage :texonomy-server
-  (:nicknames :tex-server)
-  (:use :cl
-	:texonomy-rec
-	:hunchentoot
-	:cl-json)
-  (:documentation
-   "Server package to run back-end as a whole server.")
-  (:export))
